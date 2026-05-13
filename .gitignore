@@ -1,0 +1,11 @@
+# Xcode project and local build data
+/AlarmWeatherApp.xcodeproj/
+/AlarmWeatherAppTests/
+/AlarmWeatherAppUITests/
+/DerivedData/
+
+# Local notes
+/for_github.md
+
+# macOS
+.DS_Store
