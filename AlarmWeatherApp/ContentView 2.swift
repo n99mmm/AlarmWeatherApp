@@ -1,22 +1,99 @@
 import SwiftUI
-
+import Combine
 
 struct ContentView: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        TabView(selection: $appState.activeTab) {
-            MainAlarmView()
-                .tabItem { Label("アラーム", systemImage: "alarm") }
-                .tag(0)
+        Group {
+            if appState.isAlarmRinging {
+                AlarmRingingView()
+                    .transition(.opacity)
+            } else {
+                TabView(selection: $appState.activeTab) {
+                    MainAlarmView()
+                        .tabItem { Label("アラーム", systemImage: "alarm") }
+                        .tag(0)
 
-            WeatherResultView()
-                .tabItem { Label("天気", systemImage: "cloud.rain") }
-                .tag(1)
+                    WeatherResultView()
+                        .tabItem { Label("天気", systemImage: "cloud.rain") }
+                        .tag(1)
 
-            SettingsView()
-                .tabItem { Label("設定", systemImage: "gearshape") }
-                .tag(2)
+                    SettingsView()
+                        .tabItem { Label("設定", systemImage: "gearshape") }
+                        .tag(2)
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: appState.isAlarmRinging)
+    }
+}
+
+struct AlarmRingingView: View {
+    @EnvironmentObject private var appState: AppState
+    @State private var now = Date()
+
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(.systemBackground), Color(.secondarySystemBackground)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 28) {
+                Spacer()
+
+                VStack(spacing: 12) {
+                    Text("アラーム")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(now.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).second(.twoDigits)))
+                        .font(.system(size: 72, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                        .accessibilityLabel("現在時刻")
+                }
+
+                VStack(spacing: 14) {
+                    Button {
+                        Task { await appState.snoozeAlarm() }
+                    } label: {
+                        Label("スヌーズを続ける", systemImage: "zzz")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+
+                    Button(role: .destructive) {
+                        Task { await appState.stopAlarmAndFetchWeather() }
+                    } label: {
+                        Label("アラームを終了", systemImage: "stop.circle.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding(.horizontal, 24)
+
+                if !appState.statusMessage.isEmpty {
+                    Text(appState.statusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+
+                Spacer()
+            }
+        }
+        .onReceive(timer) { value in
+            now = value
         }
     }
 }

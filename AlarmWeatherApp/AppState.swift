@@ -89,6 +89,12 @@ final class AppState: NSObject, ObservableObject {
         AudioServicesPlaySystemSound(sound.systemSoundID)
     }
 
+    func presentRingingAlarm() {
+        isAlarmRinging = true
+        activeTab = 0
+        previewAlarmSound(alarmSettings.sound)
+    }
+
     func stopAlarmAndFetchWeather() async {
         isAlarmRinging = false
         statusMessage = "天気を取得しています。"
@@ -203,7 +209,10 @@ extension AppState: UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .sound, .list]
+        await MainActor.run {
+            presentRingingAlarm()
+        }
+        return [.banner, .sound, .list]
     }
 
     nonisolated func userNotificationCenter(
@@ -211,9 +220,7 @@ extension AppState: UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse
     ) async {
         await MainActor.run {
-            isAlarmRinging = true
-            activeTab = 0
-            previewAlarmSound(alarmSettings.sound)
+            presentRingingAlarm()
         }
         if response.actionIdentifier == "STOP_ALARM" {
             await stopAlarmAndFetchWeather()
